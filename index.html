@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BRUTAL Smash Burgers &amp; Fries · Pedidos en Línea</title>
+  <meta name="description"
+    content="Pide online en BRUTAL Smash Burgers & Fries, Piura. Smash burgers artesanales de autor, papas rústicas y bebidas con delivery y comanda directa a WhatsApp." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap"
+    rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            fuego: { DEFAULT: '#EA580C', dark: '#C2410C', soft: '#FFF1E8' },
+            tinta: '#111827',
+            carbon: '#18181B',
+            lienzo: '#F9FAFB'
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+  <style>
+    [x-cloak] {
+      display: none !important;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .pb-safe {
+      padding-bottom: max(env(safe-area-inset-bottom), 16px);
+    }
+
+    .brutal-pin {
+      background: transparent !important;
+      border: none !important;
+    }
+
+    .leaflet-container {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      z-index: 0;
+    }
+
+    @keyframes skeleton {
+      0% {
+        opacity: .55;
+      }
+
+      50% {
+        opacity: 1;
+      }
+
+      100% {
+        opacity: .55;
+      }
+    }
+
+    .skeleton {
+      animation: skeleton 1.2s ease-out infinite;
+      background: #E5E7EB;
+    }
+  </style>
+</head>
+
+<body class="bg-lienzo text-tinta font-sans antialiased selection:bg-fuego selection:text-white" x-data="brutalStore()"
+  x-init="init()"
+  :class="{ 'overflow-hidden': modalProducto || carritoAbierto || modalMapa || modalReclamaciones || modalPrivacidad || modalTerminos }">
+
+  <!-- ======================== HEADER ======================== -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-neutral-200">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+      <a href="#" class="flex items-center gap-3" aria-label="BRUTAL Smash Burgers & Fries">
+        <!-- Logotipo SVG autónomo -->
+        <svg class="w-11 h-11 shrink-0" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img"
+          aria-label="Logo BRUTAL">
+          <rect width="48" height="48" rx="12" fill="#111827" />
+          <path
+            d="M24 5c1 5 6 7.5 6 13 0 2.2-.9 4-2.2 5.2.2-3-1.6-4.6-3.3-6.4-.5 2.4-2 3.6-2 6.2 0 1.2.4 2.2 1 3-3-.7-5.5-3.3-5.5-6.8C18 14 24 11 24 5Z"
+            fill="#EA580C" />
+          <path d="M11 30.5c0-4.1 5.8-7 13-7s13 2.9 13 7H11Z" fill="#EA580C" />
+          <circle cx="18" cy="27.6" r=".9" fill="#FFF1E8" />
+          <circle cx="24" cy="26.6" r=".9" fill="#FFF1E8" />
+          <circle cx="30" cy="27.6" r=".9" fill="#FFF1E8" />
+          <path d="M10 33h28" stroke="#F9FAFB" stroke-width="3" stroke-linecap="round" />
+          <path d="M12 36.5h24c0 2.5-2 4-4.5 4h-15c-2.5 0-4.5-1.500-4.500-4Z" fill="#EA580C" />
+        </svg>
+        <div>
+          <span class="block font-extrabold text-xl tracking-tight leading-none">BRUTAL</span>
+          <span class="block text-[11px] sm:text-xs font-semibold text-fuego tracking-wide mt-0.5">Smash Burgers &amp;
+            Fries</span>
+        </div>
+      </a>
+
+      <button id="btn-abrir-carrito" @click="carritoAbierto = true"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-fuego hover:bg-fuego-dark text-white text-sm font-bold transition-colors duration-200 active:scale-95 shadow-sm">
+        <span class="relative flex items-center">
+          <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+          <span x-show="totalArticulos > 0" x-cloak
+            class="absolute -top-2 -right-2.5 bg-tinta text-white text-[10px] font-extrabold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center font-mono"
+            x-text="totalArticulos"></span>
+        </span>
+        <span class="font-mono hidden sm:inline" x-text="'S/ ' + fmt(subtotal)"></span>
+        <span class="sm:hidden font-semibold">Pedido</span>
+      </button>
+    </div>
+
+    <!-- Navegación de categorías (ScrollSpy) -->
+    <nav class="border-t border-neutral-100 bg-white" aria-label="Categorías del menú" id="barra-categorias">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 flex gap-2 overflow-x-auto no-scrollbar py-2.5" id="nav-categorias">
+        <template x-for="cat in categorias" :key="cat.nombre">
+          <button @click="irACategoria(cat.nombre)" :data-nav="cat.nombre"
+            class="shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-colors duration-200"
+            :class="categoriaActiva === cat.nombre ? 'bg-tinta text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'"
+            x-text="cat.nombre"></button>
+        </template>
+        <template x-if="cargando">
+          <div class="flex gap-2">
+            <div class="skeleton h-9 w-28 rounded-full"></div>
+            <div class="skeleton h-9 w-32 rounded-full"></div>
+            <div class="skeleton h-9 w-20 rounded-full"></div>
+          </div>
+        </template>
+      </div>
+    </nav>
+  </header>
+
+  <!-- ======================== HERO SECTION SPLIT (ESTILO BLAST) ======================== -->
+  <section class="max-w-6xl mx-auto my-6 px-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+
+      <!-- Columna Izquierda: Carbón Cálido (#18181B) -->
+      <div
+        class="bg-[#18181B] rounded-3xl p-8 sm:p-11 lg:p-12 flex flex-col justify-between shadow-sm relative overflow-hidden border border-neutral-800/80 min-h-[380px] lg:min-h-[440px]">
+        <!-- Resplandor sutil naranja en esquina -->
+        <div class="absolute -top-24 -right-24 w-60 h-60 bg-fuego/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10">
+          <!-- Tag superior mono -->
+          <div
+            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-800/90 border border-zinc-700/60 mb-6">
+            <span class="w-2 h-2 rounded-full bg-fuego animate-pulse"></span>
+            <span class="font-mono text-xs font-bold uppercase tracking-widest text-orange-400">BRUTAL BURGERS • PIURA,
+              PERÚ</span>
+          </div>
+
+          <!-- Titular contundente en mayúsculas negritas -->
+          <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-none mb-4 uppercase">
+            APLASTADAS EN PLANCHA.<br>
+            <span class="text-fuego">SIN PIEDAD.</span>
+          </h1>
+
+          <!-- Subtítulo -->
+          <p class="text-neutral-300 text-sm sm:text-base leading-relaxed max-w-md">
+            Carne fresca smasheada al momento, bordes crocantes y salsas de la casa.
+          </p>
+        </div>
+
+        <!-- Botón de acción rápida: Explorar la carta -->
+        <div class="mt-8 pt-6 border-t border-zinc-800/90 relative z-10">
+          <button @click="irACatalogo()"
+            class="px-6 py-3.5 rounded-2xl bg-fuego hover:bg-fuego-dark text-white font-bold text-sm transition-all duration-200 active:scale-95 shadow-lg shadow-fuego/25 inline-flex items-center gap-2 group">
+            <span>Explorar la carta</span>
+            <i data-lucide="arrow-down" class="w-4 h-4 group-hover:translate-y-0.5 transition-transform"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Columna Derecha: Foto gastronómica smash de alto impacto visual ocupando el alto completo -->
+      <div
+        class="relative rounded-3xl overflow-hidden shadow-sm min-h-[320px] sm:min-h-[380px] lg:min-h-[440px] h-full group bg-black">
+        <img src="hero-smash.jpg" alt="BRUTAL Smash Burger artesanal"
+          class="w-full h-full object-cover object-center rounded-3xl shadow-sm transition-transform duration-700 group-hover:scale-105" />
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ======================== CATÁLOGO / MENÚ DE AUTOR ======================== -->
+  <main id="catalogo" class="max-w-6xl mx-auto px-4 sm:px-6 pb-28 pt-2">
+
+    <!-- Error al cargar CSV -->
+    <div x-show="error" x-cloak
+      class="mt-4 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-800 flex items-start gap-3">
+      <i data-lucide="triangle-alert" class="w-5 h-5 shrink-0 mt-0.5"></i>
+      <div class="flex-1">
+        <p class="font-bold">No pudimos cargar la carta.</p>
+        <p class="mt-1" x-text="error"></p>
+        <button @click="init()"
+          class="mt-3 px-4 py-2 rounded-lg bg-red-600 text-white font-bold text-xs hover:bg-red-700 transition-colors">Reintentar</button>
+      </div>
+    </div>
+
+    <!-- Skeleton de carga -->
+    <div x-show="cargando" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-6">
+      <template x-for="n in 6" :key="n">
+        <div class="bg-white rounded-3xl border border-neutral-200 p-5 flex gap-4">
+          <div class="flex-1 space-y-3">
+            <div class="skeleton h-3 w-1/3 rounded"></div>
+            <div class="skeleton h-5 w-3/4 rounded"></div>
+            <div class="skeleton h-3 w-full rounded"></div>
+            <div class="skeleton h-3 w-2/3 rounded"></div>
+            <div class="skeleton h-5 w-20 rounded"></div>
+          </div>
+          <div class="skeleton w-24 h-24 sm:w-28 sm:h-28 rounded-2xl"></div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Grupos de categorías con ScrollSpy -->
+    <template x-for="cat in categorias" :key="cat.nombre">
+      <section :id="slug(cat.nombre)" data-seccion class="pt-8 scroll-mt-36" :data-cat="cat.nombre">
+        <div class="flex items-baseline justify-between mb-4 pb-2 border-b border-neutral-200/80">
+          <div>
+            <h2 class="text-2xl font-extrabold tracking-tight" x-text="cat.nombre"></h2>
+            <p class="text-xs text-neutral-500 font-mono mt-0.5" x-text="cat.items.length + ' opciones disponibles'">
+            </p>
+          </div>
+          <span class="font-mono text-xs font-bold text-fuego uppercase tracking-wider">Carta BRUTAL</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <template x-for="(p, pIdx) in cat.items" :key="p.id">
+            <!-- Tarjeta de producto de autor -->
+            <article
+              class="bg-white rounded-3xl border border-neutral-200 p-4 sm:p-5 flex gap-4 justify-between transition-all duration-200 shadow-sm relative group"
+              :class="p.disponible ? 'hover:border-fuego/70 hover:shadow-md cursor-pointer' : 'opacity-60 bg-neutral-50/70'"
+              @click="p.disponible && abrirProducto(p)">
+
+              <div class="flex-1 min-w-0 flex flex-col justify-between">
+                <div>
+                  <p class="font-mono text-[11px] sm:text-xs font-bold tracking-wider uppercase text-fuego mb-1"
+                    x-text="subtituloAutor(p, pIdx)"></p>
+
+                  <h3
+                    class="text-base sm:text-lg font-extrabold text-tinta leading-snug group-hover:text-fuego transition-colors"
+                    x-text="p.nombre"></h3>
+
+                  <span x-show="!p.disponible"
+                    class="inline-block mt-1 text-[10px] font-mono font-bold uppercase tracking-wider bg-zinc-900 text-white px-2 py-0.5 rounded-md">
+                    Agotado por hoy
+                  </span>
+
+                  <p class="mt-1.5 text-xs sm:text-sm text-neutral-600 line-clamp-2 leading-relaxed"
+                    x-text="p.descripcion"></p>
+                </div>
+
+                <div class="pt-3 mt-auto">
+                  <span class="font-mono text-base sm:text-lg font-extrabold text-tinta"
+                    x-text="'S/ ' + fmt(p.precio)"></span>
+                </div>
+              </div>
+
+              <!-- Foto y Botón + -->
+              <div class="relative shrink-0 self-start">
+                <img :src="p.foto || placeholder" :alt="p.nombre" loading="lazy" @error="$el.src = placeholder"
+                  class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover bg-neutral-100 shadow-sm transition-transform duration-300 group-hover:scale-[1.02]" />
+
+                <button type="button" :disabled="!p.disponible" @click.stop="abrirProducto(p)"
+                  :aria-label="'Agregar ' + p.nombre"
+                  class="absolute -bottom-2 -right-2 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white transition-all duration-200"
+                  :class="p.disponible ? 'bg-fuego hover:bg-fuego-dark active:scale-90 shadow-orange-600/30' : 'bg-neutral-300 cursor-not-allowed'">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                    stroke-linecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+              </div>
+
+            </article>
+          </template>
+        </div>
+      </section>
+    </template>
+  </main>
+
+  <!-- ======================== FOOTER CON BLINDAJE LEGAL PERUANO ======================== -->
+  <footer class="border-t border-neutral-200 bg-[#F4F4F5] pb-28 sm:pb-12 pt-10">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+
+      <!-- Bloque superior -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 pb-8 border-b border-neutral-300/80">
+        <!-- Marca -->
+        <div>
+          <div class="flex items-center gap-2.5">
+            <span class="w-3 h-3 rounded-full bg-fuego"></span>
+            <span class="font-extrabold text-lg tracking-tight text-tinta">BRUTAL SMASH BURGERS</span>
+          </div>
+          <p class="mt-2 text-xs text-neutral-600 leading-relaxed">
+            Smash burgers artesanales elaboradas al momento en plancha caliente. Av. Ramón Mujica, Urb. San Eduardo,
+            Piura, Perú.
+          </p>
+          <p class="mt-2 text-xs font-mono text-neutral-500">RUC: 20608541299</p>
+        </div>
+
+        <!-- Horarios y Despacho -->
+        <div>
+          <h4 class="text-xs font-mono font-bold uppercase tracking-wider text-neutral-900 mb-2">Despacho &amp; Atención
+          </h4>
+          <ul class="text-xs text-neutral-600 space-y-1.5">
+            <li>• Martes a Domingo: 6:30 PM - 11:30 PM</li>
+            <li>• Delivery en Piura urbana y recojo en local</li>
+            <li>• WhatsApp oficial: +51 957 418 893</li>
+          </ul>
+        </div>
+
+        <!-- Blindaje Legal Peruano (3 Modales) -->
+        <div>
+          <h4 class="text-xs font-mono font-bold uppercase tracking-wider text-neutral-900 mb-2">Garantías &amp; Marco
+            Legal</h4>
+          <div class="flex flex-col gap-2">
+            <button @click="abrirReclamaciones()"
+              class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-neutral-200 hover:border-fuego text-left text-xs font-bold text-neutral-800 transition-colors shadow-sm group">
+              <span class="flex items-center gap-2">
+                <i data-lucide="book-open" class="w-4 h-4 text-fuego"></i>
+                Libro de Reclamaciones
+              </span>
+              <i data-lucide="chevron-right"
+                class="w-3.5 h-3.5 text-neutral-400 group-hover:text-fuego transition-colors"></i>
+            </button>
+
+            <button @click="modalPrivacidad = true"
+              class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-neutral-200 hover:border-fuego text-left text-xs font-bold text-neutral-800 transition-colors shadow-sm group">
+              <span class="flex items-center gap-2">
+                <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+                Políticas de Privacidad (Ley N° 29733)
+              </span>
+              <i data-lucide="chevron-right"
+                class="w-3.5 h-3.5 text-neutral-400 group-hover:text-fuego transition-colors"></i>
+            </button>
+
+            <button @click="modalTerminos = true"
+              class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-neutral-200 hover:border-fuego text-left text-xs font-bold text-neutral-800 transition-colors shadow-sm group">
+              <span class="flex items-center gap-2">
+                <i data-lucide="file-text" class="w-4 h-4 text-neutral-700"></i>
+                Términos y Condiciones de Servicio
+              </span>
+              <i data-lucide="chevron-right"
+                class="w-3.5 h-3.5 text-neutral-400 group-hover:text-fuego transition-colors"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Atribución técnica -->
+      <div
+        class="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left text-xs text-neutral-500">
+        <p>© 2026 BRUTAL Smash Burgers &amp; Fries. Todos los derechos reservados.</p>
+        <p class="font-medium text-neutral-600">
+          Desarrollado con tecnología de <span class="font-bold text-neutral-900">Mesa Digital</span> • Pedidos directos
+          a WhatsApp
+        </p>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- ======================== BARRA FLOTANTE MÓVIL ======================== -->
+  <div x-show="totalArticulos > 0 && !carritoAbierto && !modalProducto" x-cloak
+    class="fixed bottom-0 inset-x-0 z-30 p-3 pb-safe sm:hidden">
+    <button @click="carritoAbierto = true"
+      class="w-full flex items-center justify-between bg-tinta text-white rounded-2xl px-5 py-4 font-bold shadow-2xl active:scale-[0.98] transition-transform">
+      <span class="flex items-center gap-2">
+        <span class="bg-fuego rounded-lg px-2.5 py-0.5 text-xs font-mono font-extrabold" x-text="totalArticulos"></span>
+        <span>Ver pedido</span>
+      </span>
+      <span class="font-mono text-base font-extrabold" x-text="'S/ ' + fmt(subtotal)"></span>
+    </button>
+  </div>
+
+  <!-- ======================== DRAWER DE PRODUCTO ======================== -->
+  <div x-show="modalProducto" x-cloak class="fixed inset-0 z-50" role="dialog" aria-modal="true"
+    @keydown.escape.window="modalProducto = null">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="modalProducto = null"
+      x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"></div>
+
+    <div
+      class="absolute inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center pointer-events-none p-0 sm:p-4">
+      <div
+        class="pointer-events-auto bg-white w-full sm:max-w-lg max-h-[92vh] flex flex-col rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl"
+        x-transition:enter="transition ease-out duration-250" x-transition:enter-start="translate-y-8 opacity-0"
+        x-transition:enter-end="translate-y-0 opacity-100">
+        <template x-if="modalProducto">
+          <div class="flex flex-col min-h-0">
+            <div class="relative shrink-0">
+              <img :src="modalProducto.foto || placeholder" :alt="modalProducto.nombre" @error="$el.src = placeholder"
+                class="w-full h-48 sm:h-56 object-cover bg-neutral-100" />
+              <button @click="modalProducto = null" aria-label="Cerrar"
+                class="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/95 shadow-md flex items-center justify-center hover:bg-white transition-colors">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                  stroke-linecap="round">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="overflow-y-auto px-5 pt-5 pb-4 space-y-5">
+              <div>
+                <div class="flex justify-between items-start gap-3">
+                  <h3 class="text-2xl font-extrabold tracking-tight leading-tight" x-text="modalProducto.nombre"></h3>
+                  <span class="font-mono font-bold text-lg shrink-0 text-tinta"
+                    x-text="'S/ ' + fmt(modalProducto.precio)"></span>
+                </div>
+                <p class="mt-2 text-sm text-neutral-600" x-text="modalProducto.descripcion"></p>
+              </div>
+
+              <!-- Salsas y extras: solo si llevaSalsas -->
+              <template x-if="modalProducto.llevaSalsas">
+                <div class="space-y-5">
+                  <div>
+                    <div class="flex items-center justify-between mb-2">
+                      <h4 class="text-sm font-bold">Elige tus salsas artesanales</h4>
+                      <span class="text-xs text-neutral-500">Puedes elegir varias</span>
+                    </div>
+
+                    <label x-show="sel.qty > 1"
+                      class="flex items-center justify-between gap-3 mb-3 p-3 rounded-xl bg-fuego-soft cursor-pointer">
+                      <span class="text-sm font-semibold text-fuego-dark">Mismas salsas para toda la orden</span>
+                      <input type="checkbox" x-model="sel.mismas" class="w-5 h-5 accent-orange-600" />
+                    </label>
+
+                    <template x-for="(u, ui) in unidadesVisibles" :key="ui">
+                      <div class="mb-3">
+                        <p x-show="!sel.mismas && sel.qty > 1" class="text-xs font-bold text-neutral-500 mb-1.5"
+                          x-text="modalProducto.nombre + ' #' + (ui + 1)"></p>
+                        <div class="flex flex-wrap gap-2">
+                          <template x-for="s in modalProducto.salsas" :key="s">
+                            <button type="button" @click="toggleSalsa(ui, s)"
+                              class="px-3.5 py-2 rounded-full text-sm font-semibold border transition-colors duration-150"
+                              :class="sel.unidades[ui].includes(s) ? 'bg-fuego border-fuego text-white' : 'bg-white border-neutral-300 text-neutral-700 hover:border-fuego'"
+                              x-text="s"></button>
+                          </template>
+                          <p x-show="modalProducto.salsas.length === 0" class="text-sm text-neutral-500">Sin salsas
+                            configuradas.</p>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+
+                  <div>
+                    <h4 class="text-sm font-bold mb-2">Extras de autor <span class="font-normal text-neutral-500">(por
+                        unidad)</span></h4>
+                    <div class="space-y-2">
+                      <template x-for="ex in extrasDisponibles" :key="ex.nombre">
+                        <label
+                          class="flex items-center justify-between gap-3 p-3 rounded-xl border cursor-pointer transition-colors duration-150"
+                          :class="sel.extras.includes(ex.nombre) ? 'border-fuego bg-fuego-soft' : 'border-neutral-200 hover:border-neutral-300'">
+                          <span class="flex items-center gap-3">
+                            <input type="checkbox" :value="ex.nombre" x-model="sel.extras"
+                              class="w-5 h-5 accent-orange-600" />
+                            <span class="text-sm font-semibold" x-text="'+ ' + ex.nombre"></span>
+                          </span>
+                          <span class="font-mono text-sm font-bold" x-text="'S/ ' + fmt(ex.precio)"></span>
+                        </label>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- Cantidad y Botón Agregar -->
+            <div class="shrink-0 border-t border-neutral-200 p-4 pb-safe flex items-center gap-3 bg-white">
+              <div class="flex items-center rounded-xl border border-neutral-300">
+                <button @click="cambiarCantidadSel(-1)"
+                  class="w-11 h-12 flex items-center justify-center hover:bg-neutral-100 rounded-l-xl transition-colors"
+                  aria-label="Menos">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                    stroke-linecap="round">
+                    <path d="M5 12h14" />
+                  </svg>
+                </button>
+                <span class="w-8 text-center font-mono font-bold" x-text="sel.qty"></span>
+                <button @click="cambiarCantidadSel(1)"
+                  class="w-11 h-12 flex items-center justify-center hover:bg-neutral-100 rounded-r-xl transition-colors"
+                  aria-label="Más">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                    stroke-linecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+              </div>
+              <button @click="agregarAlPedido()"
+                class="flex-1 h-12 rounded-xl bg-fuego hover:bg-fuego-dark text-white font-bold flex items-center justify-between px-4 transition-colors duration-200 active:scale-[0.98]">
+                <span>Agregar al pedido</span>
+                <span class="font-mono" x-text="'S/ ' + fmt(totalSeleccion)"></span>
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== CARRITO ======================== -->
+  <div x-show="carritoAbierto" x-cloak class="fixed inset-0 z-50" role="dialog" aria-modal="true"
+    @keydown.escape.window="carritoAbierto = false">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="carritoAbierto = false"
+      x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"></div>
+
+    <aside class="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white flex flex-col shadow-2xl"
+      x-transition:enter="transition ease-out duration-250" x-transition:enter-start="translate-x-full"
+      x-transition:enter-end="translate-x-0">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-neutral-200 shrink-0">
+        <div>
+          <h2 class="text-xl font-extrabold tracking-tight">Resumen de tu pedido</h2>
+          <p class="text-xs text-neutral-500 font-mono">Piura, Perú</p>
+        </div>
+        <button @click="carritoAbierto = false" aria-label="Cerrar"
+          class="w-9 h-9 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-5 py-4 space-y-6">
+        <!-- Vacío -->
+        <div x-show="carrito.length === 0" class="text-center py-16 text-neutral-500">
+          <i data-lucide="shopping-bag" class="w-10 h-10 mx-auto text-neutral-300"></i>
+          <p class="mt-3 font-semibold text-neutral-700">Tu pedido está vacío</p>
+          <p class="text-sm">Agrega una smash burger para empezar.</p>
+        </div>
+
+        <!-- Líneas de pedido -->
+        <div class="space-y-3" x-show="carrito.length > 0">
+          <template x-for="(l, i) in carrito" :key="l.key">
+            <div class="flex gap-3 p-3 rounded-2xl border border-neutral-200 bg-neutral-50/50">
+              <img :src="l.producto.foto || placeholder" @error="$el.src = placeholder" :alt="l.producto.nombre"
+                class="w-16 h-16 rounded-xl object-cover bg-neutral-100 shrink-0" />
+              <div class="flex-1 min-w-0">
+                <div class="flex justify-between gap-2">
+                  <p class="font-bold text-sm leading-snug" x-text="l.qty + '× ' + l.producto.nombre"></p>
+                  <p class="font-mono font-bold text-sm shrink-0" x-text="'S/ ' + fmt(totalLinea(l))"></p>
+                </div>
+                <template x-if="l.producto.llevaSalsas">
+                  <div class="mt-1 text-xs text-neutral-500 space-y-0.5">
+                    <template x-for="(txt, ti) in detalleSalsas(l)" :key="ti">
+                      <p x-text="txt"></p>
+                    </template>
+                    <p x-show="l.extras.length" x-text="'Extras: ' + l.extras.join(', ')"></p>
+                  </div>
+                </template>
+                <div class="mt-2 flex items-center justify-between">
+                  <div class="flex items-center rounded-lg border border-neutral-300 text-sm bg-white">
+                    <button @click="cambiarCantidadLinea(i, -1)"
+                      class="w-8 h-8 flex items-center justify-center hover:bg-neutral-100 rounded-l-lg"
+                      aria-label="Menos">−</button>
+                    <span class="w-7 text-center font-mono font-bold text-xs" x-text="l.qty"></span>
+                    <button @click="cambiarCantidadLinea(i, 1)"
+                      class="w-8 h-8 flex items-center justify-center hover:bg-neutral-100 rounded-r-lg"
+                      aria-label="Más">+</button>
+                  </div>
+                  <button @click="quitarLinea(i)"
+                    class="text-xs font-semibold text-neutral-400 hover:text-red-600 transition-colors">Quitar</button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Datos del cliente y entrega -->
+        <div x-show="carrito.length > 0" class="space-y-5">
+          <div>
+            <p class="text-sm font-bold mb-2">Modalidad de entrega</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button @click="modalidad = 'delivery'"
+                class="py-2.5 rounded-xl border text-sm font-bold transition-colors"
+                :class="modalidad === 'delivery' ? 'bg-tinta text-white border-tinta' : 'bg-white border-neutral-300 hover:border-neutral-400'">Delivery</button>
+              <button @click="modalidad = 'recojo'" class="py-2.5 rounded-xl border text-sm font-bold transition-colors"
+                :class="modalidad === 'recojo' ? 'bg-tinta text-white border-tinta' : 'bg-white border-neutral-300 hover:border-neutral-400'">Recojo
+                en local</button>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label class="text-xs font-bold text-neutral-600" for="f-nombre">Nombre y Apellido</label>
+              <input id="f-nombre" type="text" x-model="form.nombre" autocomplete="name" placeholder="Tu nombre"
+                class="mt-1 w-full rounded-xl border border-neutral-300 px-3.5 py-3 text-sm focus:outline-none focus:border-fuego focus:ring-2 focus:ring-fuego/20" />
+            </div>
+            <div>
+              <label class="text-xs font-bold text-neutral-600" for="f-telefono">Teléfono (WhatsApp)</label>
+              <input id="f-telefono" type="tel" inputmode="tel" x-model="form.telefono" autocomplete="tel"
+                placeholder="ej. 987 654 321"
+                class="mt-1 w-full rounded-xl border border-neutral-300 px-3.5 py-3 text-sm focus:outline-none focus:border-fuego focus:ring-2 focus:ring-fuego/20" />
+            </div>
+
+            <template x-if="modalidad === 'delivery'">
+              <div class="space-y-3">
+                <div>
+                  <label class="text-xs font-bold text-neutral-600" for="f-direccion">Dirección exacta en Piura</label>
+                  <input id="f-direccion" type="text" x-model="form.direccion" autocomplete="street-address"
+                    placeholder="Calle, número, referencia"
+                    class="mt-1 w-full rounded-xl border border-neutral-300 px-3.5 py-3 text-sm focus:outline-none focus:border-fuego focus:ring-2 focus:ring-fuego/20" />
+                </div>
+                <div>
+                  <p class="text-xs font-bold text-neutral-600 mb-1">Ubicación GPS (Leaflet)</p>
+                  <button @click="abrirMapa()" type="button"
+                    class="w-full flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors"
+                    :class="entrega.fijada ? 'border-emerald-300 bg-emerald-50' : 'border-dashed border-neutral-300 hover:border-fuego'">
+                    <i data-lucide="map-pin" class="w-5 h-5 shrink-0"
+                      :class="entrega.fijada ? 'text-emerald-600' : 'text-fuego'"></i>
+                    <span class="flex-1 min-w-0 text-sm">
+                      <span class="block font-bold"
+                        x-text="entrega.fijada ? 'Ubicación fijada' : 'Marcar mi ubicación en el mapa'"></span>
+                      <span class="block text-xs text-neutral-500 truncate"
+                        x-text="entrega.fijada ? (entrega.km.toFixed(1) + ' km · Delivery S/ ' + fmt(entrega.tarifa)) : 'Calculamos la tarifa según tu distancia'"></span>
+                    </span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-neutral-400"></i>
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Comprobante -->
+          <div>
+            <p class="text-sm font-bold mb-2">Comprobante de pago</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button @click="form.comprobante = 'Boleta'"
+                class="py-2.5 rounded-xl border text-sm font-bold transition-colors"
+                :class="form.comprobante === 'Boleta' ? 'bg-fuego text-white border-fuego' : 'bg-white border-neutral-300 hover:border-neutral-400'">Boleta</button>
+              <button @click="form.comprobante = 'Factura'"
+                class="py-2.5 rounded-xl border text-sm font-bold transition-colors"
+                :class="form.comprobante === 'Factura' ? 'bg-fuego text-white border-fuego' : 'bg-white border-neutral-300 hover:border-neutral-400'">Factura</button>
+            </div>
+            <div x-show="form.comprobante === 'Factura'" x-cloak class="mt-2 grid gap-2">
+              <input type="text" inputmode="numeric" maxlength="11" x-model="form.ruc" placeholder="RUC (11 dígitos)"
+                class="w-full rounded-xl border border-neutral-300 px-3.5 py-3 text-sm focus:outline-none focus:border-fuego focus:ring-2 focus:ring-fuego/20" />
+              <input type="text" x-model="form.razonSocial" placeholder="Razón social"
+                class="w-full rounded-xl border border-neutral-300 px-3.5 py-3 text-sm focus:outline-none focus:border-fuego focus:ring-2 focus:ring-fuego/20" />
+            </div>
+          </div>
+
+          <!-- Método de pago -->
+          <div>
+            <p class="text-sm font-bold mb-2">Método de pago</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button @click="form.pago = 'Yape / Plin'"
+                class="py-2.5 rounded-xl border text-sm font-bold transition-colors"
+                :class="form.pago === 'Yape / Plin' ? 'bg-fuego text-white border-fuego' : 'bg-white border-neutral-300 hover:border-neutral-400'">Yape
+                / Plin</button>
+              <button @click="form.pago = 'Efectivo'"
+                class="py-2.5 rounded-xl border text-sm font-bold transition-colors"
+                :class="form.pago === 'Efectivo' ? 'bg-fuego text-white border-fuego' : 'bg-white border-neutral-300 hover:border-neutral-400'">Efectivo</button>
+            </div>
+            <!-- Datos de Pago Yape / Plin -->
+            <div x-show="form.pago === 'Yape / Plin'" x-cloak
+              class="bg-purple-50 border border-purple-200 rounded-xl p-3 text-xs text-purple-900 mt-2 space-y-1">
+              <p class="font-bold flex items-center gap-1.5">
+                <span>📲</span> Yape / Plin Oficial
+              </p>
+              <p class="text-sm font-extrabold font-mono text-purple-950">
+                957 418 893 <span class="font-normal font-sans text-xs text-purple-700">(Titular: Juan Martín
+                  Adrianzen)</span>
+              </p>
+              <p class="text-[11px] text-purple-800 leading-tight">
+                Realiza la transferencia y adjunta la captura o comprobante en el chat de WhatsApp al enviar tu orden.
+              </p>
+            </div>
+            <input x-show="form.pago === 'Efectivo'" x-cloak type="text" inputmode="decimal" x-model="form.efectivoCon"
+              placeholder="¿Con cuánto pagas? (ej. S/ 50.00)"
+              class="mt-2 w-full rounded-xl border border-neutral-300 px-3.5 py-3 text-sm focus:outline-none focus:border-fuego focus:ring-2 focus:ring-fuego/20" />
+          </div>
+
+          <!-- Servilletas -->
+          <div>
+            <p class="text-sm font-bold mb-2">¿Incluir servilletas y salsas descartables?</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button @click="form.servilletas = true"
+                class="py-2.5 rounded-xl border text-sm font-bold transition-colors"
+                :class="form.servilletas ? 'bg-fuego text-white border-fuego' : 'bg-white border-neutral-300 hover:border-neutral-400'">Sí</button>
+              <button @click="form.servilletas = false"
+                class="py-2.5 rounded-xl border text-sm font-bold transition-colors"
+                :class="!form.servilletas ? 'bg-fuego text-white border-fuego' : 'bg-white border-neutral-300 hover:border-neutral-400'">No</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Totales y Botón WhatsApp -->
+      <div x-show="carrito.length > 0"
+        class="shrink-0 border-t border-neutral-200 px-5 pt-4 pb-safe space-y-3 bg-white">
+        <div class="space-y-1 text-sm">
+          <div class="flex justify-between text-neutral-600"><span>Subtotal</span><span class="font-mono"
+              x-text="'S/ ' + fmt(subtotal)"></span></div>
+          <div x-show="modalidad === 'delivery'" class="flex justify-between text-neutral-600">
+            <span>Delivery</span>
+            <span class="font-mono" x-text="entrega.fijada ? 'S/ ' + fmt(entrega.tarifa) : 'Por calcular'"></span>
+          </div>
+          <div class="flex justify-between text-lg font-extrabold pt-1 text-tinta"><span>Total a pagar</span><span
+              class="font-mono" x-text="'S/ ' + fmt(total)"></span></div>
+        </div>
+        <p x-show="errorForm" x-cloak class="text-xs font-semibold text-red-600" x-text="errorForm"></p>
+        <button id="btn-whatsapp" @click="enviarWhatsApp()"
+          class="w-full h-13 py-3.5 rounded-xl bg-tinta hover:bg-neutral-800 text-white font-bold flex items-center justify-center gap-2 transition-colors duration-200 active:scale-[0.98] shadow-md font-mono">
+          <i data-lucide="receipt" class="w-5 h-5 text-orange-400"></i>
+          <span>Enviar comanda por WhatsApp</span>
+        </button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ======================== MODAL DE MAPA (LEAFLET) ======================== -->
+  <div x-show="modalMapa" x-cloak class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center"
+    role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="modalMapa = false"></div>
+    <div
+      class="relative bg-white w-full sm:max-w-xl rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[94vh] shadow-2xl">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-neutral-200">
+        <div>
+          <h3 class="font-extrabold text-lg tracking-tight">Punto de Entrega en Piura</h3>
+          <p class="text-xs text-neutral-500">Toca el mapa o arrastra el pin naranja a tu ubicación.</p>
+        </div>
+        <button @click="modalMapa = false" aria-label="Cerrar"
+          class="w-9 h-9 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="relative">
+        <div id="mapa-entrega" x-ref="mapaEl" class="w-full h-[48vh] sm:h-96 bg-neutral-100"></div>
+        <button @click="usarMiUbicacion()" type="button"
+          class="absolute top-3 right-3 z-[500] bg-white rounded-xl px-3 py-2 text-xs font-bold shadow flex items-center gap-1.5 hover:bg-neutral-50 transition-colors">
+          <i data-lucide="locate-fixed" class="w-4 h-4 text-fuego"></i> Mi ubicación
+        </button>
+      </div>
+
+      <div class="p-5 pb-safe space-y-3">
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="rounded-xl bg-neutral-50 py-2.5">
+            <p class="text-[11px] text-neutral-500">Distancia</p>
+            <p class="font-mono font-bold" x-text="entrega.km.toFixed(2) + ' km'"></p>
+          </div>
+          <div class="rounded-xl bg-neutral-50 py-2.5">
+            <p class="text-[11px] text-neutral-500">Tarifa delivery</p>
+            <p class="font-mono font-bold" x-text="'S/ ' + fmt(entrega.tarifa)"></p>
+          </div>
+          <div class="rounded-xl bg-neutral-50 py-2.5">
+            <p class="text-[11px] text-neutral-500">Tarifa base</p>
+            <p class="font-mono font-bold text-xs leading-6">4.00 + 1.50/km</p>
+          </div>
+        </div>
+        <p x-show="errorMapa" x-cloak class="text-xs font-semibold text-red-600" x-text="errorMapa"></p>
+        <button @click="confirmarUbicacion()"
+          class="w-full py-3.5 rounded-xl bg-fuego hover:bg-fuego-dark text-white font-bold transition-colors duration-200 active:scale-[0.98]">Confirmar
+          ubicación de entrega</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== MODAL 1: LIBRO DE RECLAMACIONES ======================== -->
+  <div x-show="modalReclamaciones" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
+    role="dialog" aria-modal="true" @keydown.escape.window="modalReclamaciones = false">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="modalReclamaciones = false"></div>
+    <div
+      class="relative bg-white w-full sm:max-w-2xl max-h-[92vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+
+      <div class="px-6 py-4 border-b border-neutral-200 flex items-center justify-between shrink-0 bg-neutral-50">
+        <div>
+          <div class="flex items-center gap-2">
+            <i data-lucide="book-open" class="w-5 h-5 text-fuego"></i>
+            <h3 class="font-extrabold text-lg tracking-tight text-neutral-900">Libro de Reclamaciones Virtual</h3>
+          </div>
+          <p class="text-xs text-neutral-500">Hoja de Reclamación conforme a la Ley N° 29571 y D.S. 011-2011-PCM</p>
+        </div>
+        <button @click="modalReclamaciones = false"
+          class="w-9 h-9 rounded-full hover:bg-neutral-200 flex items-center justify-center transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-5 flex-1">
+        <template x-if="reclamacionEnviada">
+          <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center space-y-3">
+            <div
+              class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+              <i data-lucide="check" class="w-6 h-6"></i>
+            </div>
+            <h4 class="font-extrabold text-lg text-emerald-950">Reclamación Registrada con Éxito</h4>
+            <p class="text-xs text-emerald-800">Se ha generado la constancia oficial de tu queja o reclamo con el
+              siguiente código:</p>
+            <div
+              class="bg-white border border-emerald-300 py-2.5 px-4 rounded-xl font-mono text-sm font-extrabold text-neutral-900 inline-block"
+              x-text="codigoReclamacion"></div>
+            <p class="text-xs text-emerald-700 leading-relaxed">
+              Conforme al D.S. N° 011-2011-PCM y la Ley N° 31435, daremos respuesta a tu solicitud en un plazo máximo no
+              mayor a <strong>quince (15) días hábiles</strong> al correo proporcionado.
+            </p>
+            <button @click="modalReclamaciones = false; reclamacionEnviada = false"
+              class="mt-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors">Cerrar
+              constancia</button>
+          </div>
+        </template>
+
+        <template x-if="!reclamacionEnviada">
+          <form @submit.prevent="registrarReclamacion()" class="space-y-4">
+            <div class="p-3 bg-neutral-100 rounded-xl text-xs text-neutral-700 space-y-1">
+              <p><strong>Proveedor:</strong> BRUTAL Smash Burgers &amp; Fries</p>
+              <p><strong>RUC:</strong> 20608541299 • <strong>Establecimiento:</strong> Av. Ramón Mujica, Urb. San
+                Eduardo, Piura</p>
+            </div>
+
+            <div>
+              <h5 class="text-xs font-mono font-bold uppercase tracking-wider text-neutral-900 mb-2">1. Identificación
+                del Consumidor</h5>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label class="text-[11px] font-bold text-neutral-600">Tipo Doc.</label>
+                  <select x-model="rec.tipoDoc"
+                    class="w-full mt-1 border border-neutral-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-fuego">
+                    <option value="DNI">DNI</option>
+                    <option value="CE">Carné Extranjería</option>
+                    <option value="Pasaporte">Pasaporte</option>
+                  </select>
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="text-[11px] font-bold text-neutral-600">Número de Documento</label>
+                  <input type="text" x-model="rec.numDoc" required placeholder="Ingresa tu documento"
+                    class="w-full mt-1 border border-neutral-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-fuego" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label class="text-[11px] font-bold text-neutral-600">Nombres y Apellidos</label>
+                  <input type="text" x-model="rec.nombre" required placeholder="Nombre completo"
+                    class="w-full mt-1 border border-neutral-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-fuego" />
+                </div>
+                <div>
+                  <label class="text-[11px] font-bold text-neutral-600">Teléfono</label>
+                  <input type="tel" x-model="rec.telefono" required placeholder="987 654 321"
+                    class="w-full mt-1 border border-neutral-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-fuego" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label class="text-[11px] font-bold text-neutral-600">Correo Electrónico (para respuesta)</label>
+                  <input type="email" x-model="rec.email" required placeholder="tu@email.com"
+                    class="w-full mt-1 border border-neutral-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-fuego" />
+                </div>
+                <div>
+                  <label class="text-[11px] font-bold text-neutral-600">Dirección Domiciliaria</label>
+                  <input type="text" x-model="rec.direccion" required placeholder="Dirección en Piura"
+                    class="w-full mt-1 border border-neutral-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-fuego" />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h5 class="text-xs font-mono font-bold uppercase tracking-wider text-neutral-900 mb-2">2. Detalle de la
+                Reclamación</h5>
+              <div class="grid grid-cols-2 gap-2 mb-3">
+                <button type="button" @click="rec.tipo = 'Reclamo'"
+                  class="p-2.5 rounded-xl border text-xs font-bold transition-colors"
+                  :class="rec.tipo === 'Reclamo' ? 'bg-tinta text-white border-tinta' : 'bg-white border-neutral-300 text-neutral-700'">
+                  Reclamo (Disconformidad con producto/servicio)
+                </button>
+                <button type="button" @click="rec.tipo = 'Queja'"
+                  class="p-2.5 rounded-xl border text-xs font-bold transition-colors"
+                  :class="rec.tipo === 'Queja' ? 'bg-tinta text-white border-tinta' : 'bg-white border-neutral-300 text-neutral-700'">
+                  Queja (Malestar en la atención al cliente)
+                </button>
+              </div>
+
+              <div class="space-y-3">
+                <div>
+                  <label class="text-[11px] font-bold text-neutral-600">Detalle o Explicación de los hechos</label>
+                  <textarea x-model="rec.detalle" required rows="3"
+                    placeholder="Describe claramente lo sucedido con tu pedido o atención..."
+                    class="w-full mt-1 border border-neutral-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-fuego"></textarea>
+                </div>
+                <div>
+                  <label class="text-[11px] font-bold text-neutral-600">Pedido Concreto del Consumidor</label>
+                  <input type="text" x-model="rec.pedido" required
+                    placeholder="¿Qué solución solicitas? (ej. cambio, devolución, disculpa)"
+                    class="w-full mt-1 border border-neutral-300 rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-fuego" />
+                </div>
+              </div>
+            </div>
+
+            <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
+              <p class="font-bold">Aviso Legal Obligatorio (Ley N° 31435):</p>
+              <p class="leading-relaxed">
+                Conforme al D.S. 011-2011-PCM y la Ley N° 31435, el plazo para la atención de reclamos y quejas por
+                parte del proveedor es improrrogable y no mayor a <strong>quince (15) días hábiles</strong>.
+              </p>
+            </div>
+
+            <button type="submit"
+              class="w-full py-3.5 rounded-xl bg-fuego hover:bg-fuego-dark text-white font-bold text-sm transition-colors shadow-md">
+              Registrar Reclamación en el Libro Virtual
+            </button>
+          </form>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== MODAL 2: POLÍTICAS DE PRIVACIDAD ======================== -->
+  <div x-show="modalPrivacidad" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
+    role="dialog" aria-modal="true" @keydown.escape.window="modalPrivacidad = false">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="modalPrivacidad = false"></div>
+    <div class="relative bg-white w-full sm:max-w-xl max-h-[90vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+      <div class="px-6 py-4 border-b border-neutral-200 flex items-center justify-between shrink-0 bg-neutral-50">
+        <div class="flex items-center gap-2">
+          <i data-lucide="shield-check" class="w-5 h-5 text-emerald-600"></i>
+          <h3 class="font-extrabold text-lg tracking-tight text-neutral-900">Políticas de Privacidad</h3>
+        </div>
+        <button @click="modalPrivacidad = false"
+          class="w-9 h-9 rounded-full hover:bg-neutral-200 flex items-center justify-center transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-6 overflow-y-auto space-y-4 text-xs text-neutral-700 leading-relaxed">
+        <p class="font-semibold text-neutral-900">Conforme a la Ley N° 29733 (Ley de Protección de Datos Personales en
+          el Perú) y su Reglamento aprobado por D.S. N° 003-2013-JUS:</p>
+        <div>
+          <h4 class="font-bold text-neutral-900 mb-1">1. Titularidad del Banco de Datos</h4>
+          <p>Los datos personales proporcionados a través de este portal son gestionados por BRUTAL Smash Burgers &amp;
+            Fries con domicilio en Av. Ramón Mujica, San Eduardo, Piura, Perú.</p>
+        </div>
+        <div>
+          <h4 class="font-bold text-neutral-900 mb-1">2. Finalidad del Tratamiento</h4>
+          <p>La recopilación de nombres, teléfonos, dirección domiciliaria y ubicación GPS se realiza con la exclusiva
+            finalidad de procesar, preparar, emitir comprobantes de pago autorizados por SUNAT y realizar el despacho a
+            domicilio de los pedidos solicitados por el cliente.</p>
+        </div>
+        <div>
+          <h4 class="font-bold text-neutral-900 mb-1">3. Confidencialidad y Seguridad</h4>
+          <p>BRUTAL no comercializa ni transfiere bases de datos personales a terceros con fines publicitarios ajenos a
+            la prestación de nuestro servicio de restauración y entrega.</p>
+        </div>
+        <div>
+          <h4 class="font-bold text-neutral-900 mb-1">4. Ejercicio de Derechos ARCO</h4>
+          <p>Usted puede ejercer en cualquier momento sus derechos de Acceso, Rectificación, Cancelación y Oposición
+            previstos en la Ley N° 29733 escribiendo a nuestro canal de soporte en WhatsApp.</p>
+        </div>
+      </div>
+      <div class="p-4 border-t border-neutral-200 bg-neutral-50 shrink-0 text-right">
+        <button @click="modalPrivacidad = false"
+          class="px-5 py-2.5 rounded-xl bg-tinta text-white text-xs font-bold hover:bg-neutral-800 transition-colors">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== MODAL 3: TÉRMINOS Y CONDICIONES ======================== -->
+  <div x-show="modalTerminos" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
+    role="dialog" aria-modal="true" @keydown.escape.window="modalTerminos = false">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="modalTerminos = false"></div>
+    <div class="relative bg-white w-full sm:max-w-xl max-h-[90vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+      <div class="px-6 py-4 border-b border-neutral-200 flex items-center justify-between shrink-0 bg-neutral-50">
+        <div class="flex items-center gap-2">
+          <i data-lucide="file-text" class="w-5 h-5 text-neutral-700"></i>
+          <h3 class="font-extrabold text-lg tracking-tight text-neutral-900">Términos y Condiciones</h3>
+        </div>
+        <button @click="modalTerminos = false"
+          class="w-9 h-9 rounded-full hover:bg-neutral-200 flex items-center justify-center transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-6 overflow-y-auto space-y-4 text-xs text-neutral-700 leading-relaxed">
+        <div>
+          <h4 class="font-bold text-neutral-900 mb-1">1. Cobertura de Entrega en Piura</h4>
+          <p>Nuestra cobertura de delivery opera en las zonas urbanas de Piura (San Eduardo, Santa María del Pinar,
+            Miraflores, Castilla y sectores aledaños dentro del radio delimitado por nuestro sistema Leaflet).</p>
+        </div>
+        <div>
+          <h4 class="font-bold text-neutral-900 mb-1">2. Preparación al Momento y Calidad</h4>
+          <p>Todas las smash burgers y papas rústicas son preparadas en plancha al instante tras confirmación del pedido
+            vía WhatsApp. El tiempo estimado oscila entre 25 y 45 minutos según demanda y condiciones de tráfico.</p>
+        </div>
+        <div>
+          <h4 class="font-bold text-neutral-900 mb-1">3. Medios de Pago Aceptados</h4>
+          <p>Aceptamos pagos a través de billeteras digitales (Yape / Plin) y efectivo contraentrega previa coordinación
+            del monto exacto de vuelto indicado en la orden.</p>
+        </div>
+        <div>
+          <h4 class="font-bold text-neutral-900 mb-1">4. Política de Anulación y Reembolso</h4>
+          <p>Por tratarse de alimentos preparados de consumo inmediato, solo se aceptarán cancelaciones antes de que la
+            orden haya entrado al proceso de smash en plancha. Se salvaguardan los derechos del consumidor previstos en
+            la Ley N° 29571.</p>
+        </div>
+      </div>
+      <div class="p-4 border-t border-neutral-200 bg-neutral-50 shrink-0 text-right">
+        <button @click="modalTerminos = false"
+          class="px-5 py-2.5 rounded-xl bg-tinta text-white text-xs font-bold hover:bg-neutral-800 transition-colors">Aceptar
+          y continuar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast de notificación rápida -->
+  <div x-show="toast" x-cloak x-transition.opacity.duration.200ms
+    class="fixed top-20 left-1/2 -translate-x-1/2 z-[70] bg-tinta text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg"
+    x-text="toast"></div>
+
+  <!-- ======================== SCRIPTS / ALPINE STORE ======================== -->
+  <script>
+    function brutalStore() {
+      const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRRIsmRefF2pm60uuCcfvmjDZqw8UM1r5c2eDKwzTS6BpdFzgx5Rq2gj3PBzJJlEaoXMn3qH9CjBaX9/pub?output=csv';
+      const WHATSAPP = '51957418893'; // Destino oficial para pruebas
+      const SEDE = { lat: -5.1880, lng: -80.6350 }; // San Eduardo, Piura
+      const TARIFA_BASE = 4.00, TARIFA_KM = 1.50, KM_INCLUIDOS = 1;
+
+      const EXTRAS = [
+        { nombre: 'Tocino crujiente', precio: 3.50 },
+        { nombre: 'Queso cheddar extra', precio: 2.50 }
+      ];
+
+      const FOTO_TRUFADA_CORREGIDA = 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=800&q=80';
+
+      const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="#FFF1E8"/><path d="M26 62c0-14 15-24 34-24s34 10 34 24H26Z" fill="#EA580C"/><rect x="22" y="66" width="76" height="9" rx="4.500" fill="#111827"/><path d="M26 79h68c0 8-6 13-14 13H40c-8 0-14-5-14-13Z" fill="#EA580C"/></svg>'
+      );
+
+      let mapa = null, pin = null, hogarMarker = null;
+
+      return {
+        productos: [], cargando: true, error: '',
+        categoriaActiva: '', placeholder: PLACEHOLDER, toast: '', _toastT: null,
+        modalProducto: null, carritoAbierto: false, modalMapa: false,
+        modalReclamaciones: false, modalPrivacidad: false, modalTerminos: false,
+        reclamacionEnviada: false, codigoReclamacion: '',
+
+        sel: { qty: 1, mismas: true, unidades: [[]], extras: [] },
+        carrito: [], modalidad: 'delivery',
+        entrega: { lat: SEDE.lat, lng: SEDE.lng, km: 0, tarifa: TARIFA_BASE, fijada: false },
+        form: {
+          nombre: '', telefono: '', direccion: '', comprobante: 'Boleta',
+          ruc: '', razonSocial: '', pago: 'Yape / Plin', efectivoCon: '', servilletas: true
+        },
+        rec: {
+          tipoDoc: 'DNI', numDoc: '', nombre: '', telefono: '',
+          email: '', direccion: '', tipo: 'Reclamo', detalle: '', pedido: ''
+        },
+        errorForm: '', errorMapa: '', _iniciado: false, _bloqueoSpy: false,
+
+        async init() {
+          this.cargando = true; this.error = '';
+          try {
+            const sep = CSV_URL.includes('?') ? '&' : '?';
+            const res = await fetch(CSV_URL + sep + '_=' + Date.now());
+            if (!res.ok) throw new Error('Respuesta HTTP ' + res.status);
+            const texto = await res.text();
+            this.productos = this.parsearCSV(texto);
+            if (!this.productos.length) throw new Error('La hoja no contiene productos válidos.');
+            this.categoriaActiva = this.categorias[0]?.nombre || '';
+          } catch (e) {
+            console.error('Error cargando CSV:', e);
+            this.error = 'No se pudo conectar a la carta online. Revisa tu conexión. (' + e.message + ')';
+          } finally {
+            this.cargando = false;
+          }
+          if (!this._iniciado) {
+            this._iniciado = true;
+            this.iniciarScrollSpy();
+            this.iniciarIconos();
+          }
+          this.$nextTick(() => this.iconos());
+        },
+
+        parsearCSV(texto) {
+          const filas = [];
+          let fila = [], campo = '', comillas = false;
+          texto = (texto || '').replace(/^\uFEFF/, '');
+          for (let i = 0; i < texto.length; i++) {
+            const c = texto[i];
+            if (comillas) {
+              if (c === '"') {
+                if (texto[i + 1] === '"') { campo += '"'; i++; } else comillas = false;
+              } else campo += c;
+            } else if (c === '"') comillas = true;
+            else if (c === ',') { fila.push(campo); campo = ''; }
+            else if (c === '\n' || c === '\r') {
+              if (c === '\r' && texto[i + 1] === '\n') i++;
+              fila.push(campo); campo = '';
+              if (fila.some(v => v.trim() !== '')) filas.push(fila);
+              fila = [];
+            } else campo += c;
+          }
+          fila.push(campo);
+          if (fila.some(v => v.trim() !== '')) filas.push(fila);
+          if (filas.length < 2) return [];
+
+          const norm = s => String(s || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '_');
+
+          const cab = filas[0].map(norm);
+          const col = (...aliases) => {
+            for (const a of aliases) {
+              const i = cab.indexOf(norm(a));
+              if (i >= 0) return i;
+            }
+            return -1;
+          };
+
+          const colId = col('id', 'codigo');
+          const colCat = col('categoria', 'category', 'seccion');
+          const colNombre = col('nombre', 'producto', 'name', 'titulo');
+          const colDesc = col('descripcion', 'description', 'detalle');
+          const colPrecio = col('precio', 'price', 'costo', 'valor');
+          const colSalsas = col('salsas_disponibles', 'salsas', 'sauces');
+          const colLlevaSalsas = col('lleva_salsas', 'incluye_salsas');
+          const colFoto = col('foto_url', 'foto', 'imagen_url', 'imagen', 'image');
+          const colDisp = col('disponible', 'disponibilidad', 'activo', 'stock');
+
+          const cId = colId >= 0 ? colId : 0;
+          const cCat = colCat >= 0 ? colCat : 1;
+          const cNom = colNombre >= 0 ? colNombre : 2;
+          const cDesc = colDesc >= 0 ? colDesc : 3;
+          const cPre = colPrecio >= 0 ? colPrecio : 4;
+          const cSal = colSalsas >= 0 ? colSalsas : 5;
+          const cLlev = colLlevaSalsas >= 0 ? colLlevaSalsas : 6;
+          const cFot = colFoto >= 0 ? colFoto : 7;
+          const cDis = colDisp >= 0 ? colDisp : 8;
+
+          const getVal = (f, idx) => (idx >= 0 && f[idx] !== undefined ? String(f[idx]).trim() : '');
+
+          const productos = [];
+          const filasDatos = filas.slice(1);
+
+          for (let index = 0; index < filasDatos.length; index++) {
+            const f = filasDatos[index];
+            const nombre = getVal(f, cNom);
+
+            // 1. Si no tiene nombre de producto, descartar (fila vacía)
+            if (!nombre) continue;
+
+            // 2. Si id está vacío, generar 'p-' + index
+            const idRaw = getVal(f, cId);
+            const id = idRaw || ('p-' + index);
+
+            // 3. Categoría: Asignar 'Carta General' si viene vacía
+            const catRaw = getVal(f, cCat);
+            const categoria = catRaw || 'Carta General';
+
+            const descripcion = getVal(f, cDesc);
+
+            // 4. Precio con regex para flotante seguro
+            const precio = this.parsearPrecio(getVal(f, cPre));
+
+            // Salsas disponibles
+            const salsasRaw = getVal(f, cSal);
+            const salsas = salsasRaw ? salsasRaw.split(/[,;|]/).map(s => s.trim()).filter(Boolean) : [];
+
+            // 5. Si lleva_salsas está vacío, asumir false
+            const llevaSalsasRaw = getVal(f, cLlev);
+            const llevaSalsas = /^(si|sí|s|true|1|yes|y)$/i.test(llevaSalsasRaw);
+
+            // 6. Si disponible está vacío, no existe o dice "Sí"/"true", marcarlo SIEMPRE como true.
+            // Solo marcar false si dice explícitamente "No", "false" o "Agotado".
+            const dispRaw = getVal(f, cDis);
+            const esNegativo = /^(no|n|false|0|agotado|sin stock)$/i.test(dispRaw);
+            const disponible = !esNegativo;
+
+            // 7. Si foto_url está vacía o es inválida, usar placeholder SVG interno sin fallar
+            let foto = getVal(f, cFot);
+            if (nombre.toLowerCase().includes('trufada') || (foto && foto.includes('1583032015879'))) {
+              foto = FOTO_TRUFADA_CORREGIDA;
+            }
+            const esUrlValida = Boolean(foto && (/^(https?:\/\/|\/|data:image)/i.test(foto)));
+            if (!esUrlValida) {
+              foto = this.placeholder;
+            }
+
+            productos.push({
+              id,
+              categoria,
+              nombre,
+              descripcion,
+              precio,
+              salsas,
+              llevaSalsas,
+              foto,
+              disponible,
+              index
+            });
+          }
+
+          return productos;
+        },
+
+        parsearPrecio(v) {
+          if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+          let s = String(v ?? '').replace(/[^\d.,-]/g, '').trim();
+          if (!s) return 0;
+          const c = s.lastIndexOf(','), p = s.lastIndexOf('.');
+          if (c > -1 && p > -1) {
+            s = c > p ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+          } else if (c > -1) {
+            s = /,\d{1,2}$/.test(s) ? s.replace(',', '.') : s.replace(/,/g, '');
+          }
+          const n = parseFloat(s);
+          return Number.isFinite(n) ? n : 0;
+        },
+
+        subtituloAutor(p, idx) {
+          const num = String((idx || 0) + 1).padStart(2, '0');
+          const n = (p && p.nombre ? p.nombre : 'BRUTAL').trim().toUpperCase();
+          return `${num} / ${n}`;
+        },
+
+        fmt(n) { return (Number(n) || 0).toFixed(2); },
+        slug(t) {
+          const limpio = String(t || 'general')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+          return 'cat-' + (limpio || 'seccion');
+        },
+        notificar(msg) { this.toast = msg; clearTimeout(this._toastT); this._toastT = setTimeout(() => this.toast = '', 2200); },
+        iconos() { if (window.lucide) lucide.createIcons(); },
+        iniciarIconos() {
+          let t;
+          new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => this.iconos(), 60); })
+            .observe(document.body, { childList: true, subtree: true });
+          this.iconos();
+        },
+
+        get categorias() {
+          const m = new Map();
+          (this.productos || []).forEach(p => {
+            const cat = (p.categoria || '').trim() || 'Carta General';
+            if (!m.has(cat)) m.set(cat, []);
+            m.get(cat).push(p);
+          });
+          return Array.from(m.entries()).map(([nombre, items]) => ({ nombre, items }));
+        },
+        irACatalogo() {
+          const primerBloque = document.getElementById('catalogo') || document.querySelector('[data-seccion]');
+          if (primerBloque) primerBloque.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        },
+        irACategoria(nombre) {
+          const el = document.getElementById(this.slug(nombre));
+          if (!el) return;
+          this.categoriaActiva = nombre;
+          this._bloqueoSpy = true;
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          clearTimeout(this._spyT);
+          this._spyT = setTimeout(() => this._bloqueoSpy = false, 700);
+        },
+        iniciarScrollSpy() {
+          const onScroll = () => {
+            if (this._bloqueoSpy) return;
+            const secs = document.querySelectorAll('[data-seccion]');
+            if (!secs.length) return;
+            let actual = secs[0].dataset.cat;
+            const linea = 190;
+            secs.forEach(s => { if (s.getBoundingClientRect().top - linea <= 0) actual = s.dataset.cat; });
+            if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 4) actual = secs[secs.length - 1].dataset.cat;
+            if (actual !== this.categoriaActiva) {
+              this.categoriaActiva = actual;
+              const btn = document.querySelector('[data-nav="' + CSS.escape(actual) + '"]');
+              const cont = document.getElementById('nav-categorias');
+              if (btn && cont) cont.scrollTo({ left: btn.offsetLeft - 16, behavior: 'smooth' });
+            }
+          };
+          window.addEventListener('scroll', onScroll, { passive: true });
+        },
+
+        get extrasDisponibles() { return EXTRAS; },
+        get unidadesVisibles() { return this.sel.mismas ? [this.sel.unidades[0]] : this.sel.unidades; },
+        abrirProducto(p) {
+          if (!p.disponible) return;
+          this.sel = { qty: 1, mismas: true, unidades: [[]], extras: [] };
+          this.modalProducto = p;
+        },
+        cambiarCantidadSel(d) {
+          const q = Math.min(20, Math.max(1, this.sel.qty + d));
+          this.sel.qty = q;
+          while (this.sel.unidades.length < q) this.sel.unidades.push([...this.sel.unidades[0]]);
+          this.sel.unidades.length = q;
+        },
+        toggleSalsa(ui, s) {
+          const arr = this.sel.unidades[ui];
+          const i = arr.indexOf(s);
+          if (i > -1) arr.splice(i, 1); else arr.push(s);
+          if (this.sel.mismas) this.sel.unidades = this.sel.unidades.map((_, k) => k === 0 ? arr : [...arr]);
+        },
+        get precioExtrasUnidad() {
+          return EXTRAS.filter(e => this.sel.extras.includes(e.nombre)).reduce((a, e) => a + e.precio, 0);
+        },
+        get totalSeleccion() {
+          if (!this.modalProducto) return 0;
+          const extra = this.modalProducto.llevaSalsas ? this.precioExtrasUnidad : 0;
+          return (this.modalProducto.precio + extra) * this.sel.qty;
+        },
+        agregarAlPedido() {
+          const p = this.modalProducto;
+          if (!p || !p.disponible) return;
+          const lleva = p.llevaSalsas;
+          const unidades = lleva
+            ? this.sel.unidades.map((u, k) => [...(this.sel.mismas ? this.sel.unidades[0] : u)])
+            : [];
+          const extras = lleva ? [...this.sel.extras] : [];
+          const extraUnit = lleva ? this.precioExtrasUnidad : 0;
+          this.carrito.push({
+            key: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+            producto: p, qty: this.sel.qty, unidades, extras, extraUnit,
+            mismas: this.sel.mismas
+          });
+          this.modalProducto = null;
+          this.notificar(p.nombre + ' agregado al pedido');
+        },
+
+        totalLinea(l) { return (l.producto.precio + l.extraUnit) * l.qty; },
+        cambiarCantidadLinea(i, d) {
+          const l = this.carrito[i];
+          const q = l.qty + d;
+          if (q < 1) return this.quitarLinea(i);
+          l.qty = Math.min(20, q);
+          if (l.producto.llevaSalsas) {
+            while (l.unidades.length < l.qty) l.unidades.push([...(l.unidades[0] || [])]);
+            l.unidades.length = l.qty;
+          }
+        },
+        quitarLinea(i) { this.carrito.splice(i, 1); if (!this.carrito.length) this.errorForm = ''; },
+        detalleSalsas(l) {
+          if (!l.unidades.length) return [];
+          const lista = u => u.length ? u.join(', ') : 'Sin salsa';
+          if (l.mismas || l.qty === 1) return ['Salsas: ' + lista(l.unidades[0])];
+          return l.unidades.map((u, k) => '#' + (k + 1) + ': ' + lista(u));
+        },
+        get totalArticulos() { return this.carrito.reduce((a, l) => a + l.qty, 0); },
+        get subtotal() { return this.carrito.reduce((a, l) => a + this.totalLinea(l), 0); },
+        get costoDelivery() { return this.modalidad === 'delivery' && this.entrega.fijada ? this.entrega.tarifa : 0; },
+        get total() { return this.subtotal + this.costoDelivery; },
+
+        calcularTarifa(km) {
+          const extra = Math.max(0, Math.ceil(km - KM_INCLUIDOS));
+          return TARIFA_BASE + extra * TARIFA_KM;
+        },
+        distanciaKm(a, b, c, d) {
+          const R = 6371, rad = x => x * Math.PI / 180;
+          const dLat = rad(c - a), dLng = rad(d - b);
+          const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a)) * Math.cos(rad(c)) * Math.sin(dLng / 2) ** 2;
+          return 2 * R * Math.asin(Math.sqrt(h));
+        },
+        iconoPin(color) {
+          const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48" viewBox="0 0 40 48"><path d="M20 47C20 47 3 29.500 3 18a17 17 0 0 1 34 0c0 11.500-17 29-17 29Z" fill="' + color + '" stroke="#fff" stroke-width="2.500"/><circle cx="20" cy="18" r="6.500" fill="#fff"/></svg>';
+          return L.divIcon({ html: svg, className: 'brutal-pin', iconSize: [40, 48], iconAnchor: [20, 46] });
+        },
+        actualizarEntrega(lat, lng) {
+          this.entrega.lat = lat; this.entrega.lng = lng;
+          this.entrega.km = this.distanciaKm(SEDE.lat, SEDE.lng, lat, lng);
+          this.entrega.tarifa = this.calcularTarifa(this.entrega.km);
+        },
+        colocarPin(lat, lng) {
+          if (!mapa) return;
+          if (!pin) {
+            pin = L.marker([lat, lng], { draggable: true, icon: this.iconoPin('#EA580C') }).addTo(mapa);
+            pin.on('dragend', () => { const p = pin.getLatLng(); this.actualizarEntrega(p.lat, p.lng); });
+          } else pin.setLatLng([lat, lng]);
+          this.actualizarEntrega(lat, lng);
+        },
+        abrirMapa() {
+          this.errorMapa = '';
+          this.modalMapa = true;
+          this.$nextTick(() => {
+            if (typeof L === 'undefined') { this.errorMapa = 'No se pudo cargar el mapa. Revisa tu conexión.'; return; }
+            if (!mapa) {
+              mapa = L.map(this.$refs.mapaEl, { zoomControl: true, attributionControl: true }).setView([SEDE.lat, SEDE.lng], 14);
+              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(mapa);
+              hogarMarker = L.marker([SEDE.lat, SEDE.lng], {
+                icon: this.iconoPin('#111827'), interactive: false, keyboard: false
+              }).addTo(mapa);
+              mapa.on('click', e => this.colocarPin(e.latlng.lat, e.latlng.lng));
+            }
+            mapa.invalidateSize();
+            const lat = this.entrega.fijada ? this.entrega.lat : SEDE.lat + 0.003;
+            const lng = this.entrega.fijada ? this.entrega.lng : SEDE.lng + 0.003;
+            this.colocarPin(lat, lng);
+            mapa.setView([lat, lng], 15);
+            setTimeout(() => { if (mapa) { mapa.invalidateSize(); mapa.setView(pin.getLatLng(), mapa.getZoom()); } }, 250);
+          });
+        },
+        usarMiUbicacion() {
+          if (!navigator.geolocation) { this.errorMapa = 'Tu navegador no soporta geolocalización.'; return; }
+          this.errorMapa = '';
+          navigator.geolocation.getCurrentPosition(
+            pos => {
+              this.colocarPin(pos.coords.latitude, pos.coords.longitude);
+              mapa.setView([pos.coords.latitude, pos.coords.longitude], 16);
+            },
+            () => { this.errorMapa = 'No pudimos obtener tu ubicación. Marca el punto en el mapa.'; },
+            { enableHighAccuracy: true, timeout: 8000 }
+          );
+        },
+        confirmarUbicacion() {
+          if (!pin) { this.errorMapa = 'Marca tu ubicación en el mapa.'; return; }
+          this.entrega.fijada = true;
+          this.modalMapa = false;
+          this.errorForm = '';
+        },
+        get linkMaps() {
+          return 'https://www.google.com/maps?q=' + this.entrega.lat.toFixed(6) + ',' + this.entrega.lng.toFixed(6);
+        },
+
+        enviarWhatsApp() {
+          const f = this.form;
+          this.errorForm = '';
+          if (!this.carrito.length) { this.errorForm = 'Agrega al menos un producto al pedido.'; return; }
+          if (!f.nombre.trim()) { this.errorForm = 'Ingresa tu nombre y apellido.'; return; }
+          if (f.telefono.replace(/\D/g, '').length < 7) { this.errorForm = 'Ingresa un teléfono válido.'; return; }
+          if (this.modalidad === 'delivery') {
+            if (!f.direccion.trim()) { this.errorForm = 'Ingresa tu dirección de entrega en Piura.'; return; }
+            if (!this.entrega.fijada) { this.errorForm = 'Ubica tu punto de entrega en el mapa para calcular la distancia y tarifa.'; return; }
+          }
+          if (f.comprobante === 'Factura' && (!/^\d{11}$/.test(f.ruc.trim()) || !f.razonSocial.trim())) {
+            this.errorForm = 'Para factura ingresa un RUC válido de 11 dígitos y razón social.'; return;
+          }
+
+          const now = new Date();
+          const fechaStr = now.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          const horaStr = now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+          const L = [];
+          L.push('================================');
+          L.push('BRUTAL SMASH BURGERS & FRIES');
+          L.push('Ticket de Pedido • Piura, Peru');
+          L.push('================================');
+          L.push('FECHA:       ' + fechaStr + ' ' + horaStr);
+          L.push('CLIENTE:     ' + f.nombre.trim());
+          L.push('TELEFONO:    ' + f.telefono.trim());
+          L.push('MODALIDAD:   ' + (this.modalidad === 'delivery' ? 'Delivery a Domicilio' : 'Recojo en Local'));
+          if (this.modalidad === 'delivery') {
+            L.push('DIRECCION:   ' + f.direccion.trim());
+            L.push('UBICACION:   ' + this.linkMaps);
+          }
+          L.push('--------------------------------');
+          L.push('CANT  PRODUCTO           TOTAL');
+          L.push('--------------------------------');
+
+          this.carrito.forEach(l => {
+            const cant = (l.qty + 'x').padEnd(5, ' ');
+            const tot = ('S/ ' + this.fmt(this.totalLinea(l))).padStart(10, ' ');
+            const nombreProd = (l.producto.nombre.length > 17 ? l.producto.nombre.slice(0, 15) + '..' : l.producto.nombre).padEnd(17, ' ');
+            L.push(cant + ' ' + nombreProd + ' ' + tot);
+            if (l.producto.llevaSalsas) {
+              if (l.mismas || l.qty === 1) {
+                const salsas = (l.unidades[0] && l.unidades[0].length) ? l.unidades[0].join(', ') : 'Sin salsa';
+                L.push('      Salsas: ' + salsas);
+              } else {
+                l.unidades.forEach((u, k) => {
+                  const s = u.length ? u.join(', ') : 'Sin salsa';
+                  L.push('      #' + (k + 1) + ': ' + s);
+                });
+              }
+              if (l.extras && l.extras.length) {
+                L.push('      Extras: ' + l.extras.join(', '));
+              }
+            }
+          });
+
+          L.push('--------------------------------');
+          L.push('SUBTOTAL:            S/ ' + this.fmt(this.subtotal).padStart(8, ' '));
+          if (this.modalidad === 'delivery') {
+            const dist = '(' + this.entrega.km.toFixed(1) + ' km)';
+            L.push('DELIVERY ' + dist.padEnd(11, ' ') + 'S/ ' + this.fmt(this.entrega.tarifa).padStart(8, ' '));
+          }
+          L.push('================================');
+          L.push('TOTAL A PAGAR:       S/ ' + this.fmt(this.total).padStart(8, ' '));
+          L.push('================================');
+          let pagoTxt = f.pago;
+          if (f.pago === 'Efectivo' && f.efectivoCon.trim()) {
+            pagoTxt += ' (Paga con S/ ' + this.fmt(this.parsearPrecio(f.efectivoCon)) + ')';
+          }
+          L.push('MEDIO PAGO:  ' + pagoTxt);
+          L.push('COMPROBANTE: ' + f.comprobante);
+          if (f.comprobante === 'Factura') {
+            L.push('RUC:         ' + f.ruc.trim());
+            L.push('R. SOCIAL:   ' + f.razonSocial.trim());
+          }
+          L.push('DESCARTABLE: ' + (f.servilletas ? 'Si (servilletas y salsas)' : 'No necesario'));
+
+          const mensaje = L.join('\n');
+          const url = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent(mensaje);
+          window.open(url, '_blank', 'noopener');
+        },
+
+        abrirReclamaciones() {
+          this.reclamacionEnviada = false;
+          this.modalReclamaciones = true;
+          this.$nextTick(() => this.iconos());
+        },
+        registrarReclamacion() {
+          const correlativo = Math.floor(1000 + Math.random() * 9000);
+          this.codigoReclamacion = 'LR-2026-' + correlativo;
+          this.reclamacionEnviada = true;
+          this.$nextTick(() => this.iconos());
+        }
+      };
+    }
+  </script>
+</body>
+
+</html>
